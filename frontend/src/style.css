@@ -1,0 +1,27 @@
+html {
+    background-color: #dceefc;
+    color: #0f2c3a;
+}
+
+body {
+    margin: 0;
+    color: #0f2c3a;
+    font-family: "Nunito", "Gill Sans", "Trebuchet MS", sans-serif;
+    background: radial-gradient(circle at top, rgba(255, 255, 255, 0.9) 0%, rgba(219, 238, 252, 0.8) 45%, rgba(197, 224, 244, 0.9) 100%);
+}
+
+@font-face {
+    font-family: "Nunito";
+    font-style: normal;
+    font-weight: 400;
+    src: local(""),
+    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+}
+
+#app {
+    height: 100vh;
+}
+
+#root {
+    min-height: 100vh;
+}

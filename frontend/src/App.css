@@ -1,0 +1,108 @@
+#App {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.ambient-orb {
+    position: absolute;
+    width: 420px;
+    height: 420px;
+    border-radius: 50%;
+    top: -140px;
+    right: -80px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(151, 215, 255, 0.4) 35%, rgba(151, 215, 255, 0.05) 65%, rgba(151, 215, 255, 0) 100%);
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+.orchestration-card {
+    width: min(420px, 92vw);
+    background: rgba(255, 255, 255, 0.82);
+    color: #0f2c3a;
+    border-radius: 30px;
+    padding: 36px 28px 28px;
+    box-shadow: 0 22px 60px rgba(11, 44, 62, 0.25);
+    backdrop-filter: blur(12px);
+}
+
+.brand-label {
+    letter-spacing: 0.35em;
+    font-weight: 700;
+    color: rgba(15, 44, 58, 0.5);
+}
+
+.headline {
+    font-weight: 700;
+}
+
+.subhead {
+    color: rgba(15, 44, 58, 0.7);
+}
+/* 
+.toggle-shell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 170px;
+    height: 74px;
+} */
+
+.toggle-chevrons {
+    position: absolute;
+    left: 18px;
+    color: rgba(15, 44, 58, 0.5);
+    font-size: 18px;
+    letter-spacing: 2px;
+    pointer-events: none;
+}
+
+.toggle-pill {
+    position: absolute;
+    right: 18px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(15, 44, 58, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: rgba(15, 44, 58, 0.65);
+    pointer-events: none;
+}
+
+.status-text {
+    text-align: center;
+    color: rgba(15, 44, 58, 0.8);
+}
+
+.log-panel {
+    width: 100%;
+    min-height: 120px;
+    max-height: 180px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(15, 44, 58, 0.06);
+    color: rgba(15, 44, 58, 0.75);
+    font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-line;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+@media (max-width: 540px) {
+    .orchestration-card {
+        padding: 28px 20px 24px;
+    }
+
+    .headline {
+        font-size: 26px;
+    }
+}
