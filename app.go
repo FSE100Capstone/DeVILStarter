@@ -20,6 +20,9 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if err := orchestration.Initialize(a.ctx); err != nil {
+		fmt.Println("Initialization failed:", err)
+	}
 }
 
 // Greet returns a greeting for the given name
@@ -33,4 +36,8 @@ func (a *App) CreateInfrastructure() string {
 
 func (a *App) DestroyInfrastructure() {
 	orchestration.DestroyInfrastructure(a.ctx)
+}
+
+func (a *App) IsInfrastructureDeployed() bool {
+	return orchestration.IsInfrastructureDeployed(a.ctx)
 }

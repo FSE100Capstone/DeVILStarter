@@ -6,3 +6,5 @@ export function CreateInfrastructure():Promise<string>;
 export function DestroyInfrastructure():Promise<void>;
 
 export function Greet(arg1:string):Promise<string>;
+
+export function IsInfrastructureDeployed():Promise<boolean>;
