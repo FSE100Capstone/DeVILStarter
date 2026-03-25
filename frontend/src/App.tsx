@@ -20,6 +20,13 @@ const OrchestrationSwitch = styled(Switch)(() => ({
                 opacity: 1,
             },
         },
+        "&.Mui-disabled": {
+            color: "#d4d4d4",
+            "& + .MuiSwitch-track": {
+                backgroundColor: "#d4d4d4",
+                opacity: 0.9,
+            },
+        },
     },
     "& .MuiSwitch-thumb": {
         boxSizing: "border-box",
@@ -48,6 +55,9 @@ const OrchestrationSwitch = styled(Switch)(() => ({
         backgroundColor: "#d7effa",
         opacity: 1,
         boxShadow: "inset 0 0 0 1px rgba(15, 44, 58, 0.08)",
+    },
+    "& .MuiSwitch-switchBase.Mui-disabled + .MuiSwitch-track": {
+        boxShadow: "inset 0 0 0 1px rgba(15, 44, 58, 0.06)",
     },
 }));
 
