@@ -17,14 +17,10 @@ import (
 )
 
 const (
-	// Replace these with your actual AWS SSO details
-	// ssoStartURL = "https://arizonastateuniversity.awsapps.com/start"
-	ssoStartURL = "https://d-9167261ecd.awsapps.com/start"
-	// ssoRegion   = "us-west-2"
-	ssoRegion = "us-west-1"
-	// accountID   = "123456789012"
-	accountID = "763736023497"
-	roleName  = "AdministratorAccess"
+	ssoStartURL = "https://arizonastateuniversity.awsapps.com/start"
+	ssoRegion   = "us-west-2"
+	accountID   = "011422532823"
+	roleName    = "saco-asafse-prod-adm"
 )
 
 func GetAWSCredentials(ctx context.Context) *ssotypes.RoleCredentials {
