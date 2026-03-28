@@ -1,6 +1,7 @@
 package aws
 
 import (
+	"DeVILStarter/internal/tools"
 	"context"
 	"errors"
 	"fmt"
@@ -52,9 +53,8 @@ func GetAWSCredentials(ctx context.Context) *ssotypes.RoleCredentials {
 	}
 
 	// 4. Prompt the user to log in via their browser
-	fmt.Printf("\nAction Required: Please open the following URL in your browser:\n")
-	fmt.Printf("URL: %s\n", *authRes.VerificationUriComplete)
-	fmt.Println("\nWaiting for browser authentication...")
+	tools.LogOrchestration(ctx, "Opening browser for AWS SSO login...")
+	tools.LogOrchestration(ctx, "If prompted, the verification code is: "+*authRes.UserCode)
 
 	runtime.BrowserOpenURL(ctx, *authRes.VerificationUriComplete)
 
