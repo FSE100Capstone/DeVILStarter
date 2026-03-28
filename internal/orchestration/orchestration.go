@@ -14,13 +14,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-func logOrchestration(ctx context.Context, message string, progress int) {
-	log.Println(message)
-	runtime.EventsEmit(ctx, "orchestrationLog", message, progress)
-}
 
 type orchestrationState struct {
 	appDataDir string
@@ -39,10 +33,10 @@ var (
 
 func Initialize(ctx context.Context) error {
 	initOnce.Do(func() {
-		logOrchestration(ctx, "Creating local app data folder...", 0)
+		tools.ProgressLogOrchestration(ctx, "Creating local app data folder...", 0)
 		appDataDir := appdata.CreateAppDataFolders(ctx)
 
-		logOrchestration(ctx, "Downloading Terraform...", 20)
+		tools.ProgressLogOrchestration(ctx, "Downloading Terraform...", 20)
 		tfFolderDir := filepath.Join(appDataDir, "terraform")
 		if err := os.MkdirAll(tfFolderDir, 0755); err != nil {
 			initErr = err
@@ -50,16 +44,16 @@ func Initialize(ctx context.Context) error {
 		}
 
 		tfExecPath := tools.DownloadTerraform(ctx, tfFolderDir)
-		logOrchestration(ctx, fmt.Sprintf("Terraform downloaded to %s!", tfExecPath), 30)
+		tools.ProgressLogOrchestration(ctx, fmt.Sprintf("Terraform downloaded to %s!", tfExecPath), 30)
 
 		infraPath := filepath.Join(appDataDir, "infra")
-		logOrchestration(ctx, "Cloning/updating DeVILSona infrastructure code...", 40)
+		tools.ProgressLogOrchestration(ctx, "Cloning/updating DeVILSona infrastructure code...", 40)
 		if err := tools.CloneOrUpdateRepo(infraPath, "https://github.com/FSE100Capstone/DeVILSona-infra"); err != nil {
 			initErr = err
 			return
 		}
 
-		logOrchestration(ctx, "Initializing Terraform...", 55)
+		tools.ProgressLogOrchestration(ctx, "Initializing Terraform...", 55)
 		tf, err := tfexec.NewTerraform(infraPath, tfExecPath)
 		if err != nil {
 			initErr = err
@@ -71,11 +65,11 @@ func Initialize(ctx context.Context) error {
 			return
 		}
 
-		logOrchestration(ctx, "Downloading portable Node.js...", 70)
+		tools.ProgressLogOrchestration(ctx, "Downloading portable Node.js...", 70)
 		nodeRoot, npmCmd := tools.EnsurePortableNode(ctx, filepath.Join(appDataDir, "node"))
-		logOrchestration(ctx, fmt.Sprintf("Portable Node.js downloaded to %s!", nodeRoot), 80)
+		tools.ProgressLogOrchestration(ctx, fmt.Sprintf("Portable Node.js downloaded to %s!", nodeRoot), 80)
 
-		logOrchestration(ctx, "Executing 'npm install' for each Lambda function...", 90)
+		tools.ProgressLogOrchestration(ctx, "Executing 'npm install' for each Lambda function...", 90)
 		if err := tools.RunNpmInstallForLambdaFolders(ctx, npmCmd, filepath.Join(infraPath, "lambda")); err != nil {
 			initErr = err
 			return
@@ -90,11 +84,11 @@ func Initialize(ctx context.Context) error {
 			tf:         tf,
 		}
 
-		logOrchestration(ctx, "Initialization complete.", 100)
+		tools.ProgressLogOrchestration(ctx, "Initialization complete.", 100)
 	})
 
 	if initErr != nil {
-		logOrchestration(ctx, fmt.Sprintf("Initialization failed: %v", initErr), 0)
+		tools.ProgressLogOrchestration(ctx, fmt.Sprintf("Initialization failed: %v", initErr), 0)
 	}
 
 	return initErr
@@ -109,7 +103,7 @@ func getOrchestrationState(ctx context.Context) (*orchestrationState, error) {
 }
 
 func CreateInfrastructure(ctx context.Context) string {
-	logOrchestration(ctx, "Waiting for user to authenticate with AWS SSO...", 0)
+	tools.ProgressLogOrchestration(ctx, "Waiting for user to authenticate with AWS SSO...", 0)
 	creds := aws.GetAWSCredentials(ctx)
 	fmt.Println("\n--- AWS Credentials Retrieved ---")
 	fmt.Printf("Access Key ID: %s\n", *creds.AccessKeyId)
@@ -133,20 +127,20 @@ func CreateInfrastructure(ctx context.Context) string {
 	// 2. Inject them into the Terraform execution context.
 	// This is highly secure because it DOES NOT set these globally on your host OS.
 	// It only makes them available to the specific child process running Terraform.
-	logOrchestration(ctx, "Setting secure environment variables for Terraform...", 20)
+	tools.ProgressLogOrchestration(ctx, "Setting secure environment variables for Terraform...", 20)
 	err = state.tf.SetEnv(envVars)
 	if err != nil {
 		log.Fatalf("Failed to set secure environment variables for Terraform: %v", err)
 	}
 
-	logOrchestration(ctx, "Planning Terraform...", 40)
+	tools.ProgressLogOrchestration(ctx, "Planning Terraform...", 40)
 	planOutputPath := filepath.Join(state.appDataDir, "plan.out")
 	_, err = state.tf.Plan(ctx, tfexec.Out(planOutputPath))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logOrchestration(ctx, "Applying Terraform (this may take a minute)...", 70)
+	tools.ProgressLogOrchestration(ctx, "Applying Terraform (this may take a minute)...", 70)
 	err = state.tf.Apply(ctx, tfexec.DirOrPlan(planOutputPath))
 	if err != nil {
 		log.Fatal(err)
@@ -168,7 +162,7 @@ func CreateInfrastructure(ctx context.Context) string {
 		log.Fatal("Failed to unmarshal output 'session_api_base_url':", err)
 	}
 
-	logOrchestration(ctx, "Infrastructure deployed successfully!", 100)
+	tools.ProgressLogOrchestration(ctx, "Infrastructure deployed successfully!", 100)
 	return outputURL
 }
 
@@ -186,19 +180,19 @@ func DestroyInfrastructure(ctx context.Context) {
 		"AWS_SESSION_TOKEN":     *creds.SessionToken,
 	}
 
-	logOrchestration(ctx, "Setting secure environment variables for Terraform...", 20)
+	tools.ProgressLogOrchestration(ctx, "Setting secure environment variables for Terraform...", 20)
 	err = state.tf.SetEnv(envVars)
 	if err != nil {
 		log.Fatalf("Failed to set secure environment variables for Terraform: %v", err)
 	}
 
-	logOrchestration(ctx, "Destroying Terraform...", 70)
+	tools.ProgressLogOrchestration(ctx, "Destroying Terraform...", 70)
 	err = state.tf.Destroy(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	logOrchestration(ctx, "Infrastructure destroyed successfully!", 100)
+	tools.ProgressLogOrchestration(ctx, "Infrastructure destroyed successfully!", 100)
 }
 
 func IsInfrastructureDeployed(ctx context.Context) bool {
@@ -207,11 +201,11 @@ func IsInfrastructureDeployed(ctx context.Context) bool {
 		return false
 	}
 
-	logOrchestration(ctx, "Checking existing infrastructure...", 95)
+	tools.ProgressLogOrchestration(ctx, "Checking existing infrastructure...", 95)
 
 	outputs, err := state.tf.Output(ctx)
 	if err != nil {
-		logOrchestration(ctx, fmt.Sprintf("Failed to read terraform outputs: %v", err), 0)
+		tools.ProgressLogOrchestration(ctx, fmt.Sprintf("Failed to read terraform outputs: %v", err), 0)
 		return false
 	}
 
@@ -222,11 +216,11 @@ func IsInfrastructureDeployed(ctx context.Context) bool {
 
 	var outputURL string
 	if err := json.Unmarshal(outputMeta.Value, &outputURL); err != nil {
-		logOrchestration(ctx, fmt.Sprintf("Failed to parse output 'session_api_base_url': %v", err), 0)
+		tools.ProgressLogOrchestration(ctx, fmt.Sprintf("Failed to parse output 'session_api_base_url': %v", err), 0)
 		return false
 	}
 
-	logOrchestration(ctx, "Infrastructure check complete.", 100)
+	tools.ProgressLogOrchestration(ctx, "Infrastructure check complete.", 100)
 
 	return outputURL != ""
 }
