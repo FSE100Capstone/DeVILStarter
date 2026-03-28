@@ -19,7 +19,7 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:  "DeVILStarter",
 		Width:  513,
-		Height: 600,
+		Height: 645,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
