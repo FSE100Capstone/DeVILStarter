@@ -82,10 +82,18 @@ function App() {
     const [progressValue, setProgressValue] = useState(0);
     const [displayProgress, setDisplayProgress] = useState(0);
     const displayProgressRef = useRef(0);
+    const logPanelRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         displayProgressRef.current = displayProgress;
     }, [displayProgress]);
+
+    useEffect(() => {
+        const panel = logPanelRef.current;
+        if (panel) {
+            panel.scrollTop = panel.scrollHeight;
+        }
+    }, [logLines]);
 
     useEffect(() => {
         let animationFrame = 0;
@@ -209,7 +217,7 @@ function App() {
                             </Box>
                         </Box>
                     )}
-                    <div id="orchestration-log" className="log-panel">
+                    <div id="orchestration-log" className="log-panel" ref={logPanelRef}>
                         {logLines.length === 0 ? "Orchestration logs will appear here." : logLines.join("\n")}
                     </div>
                 </Stack>
