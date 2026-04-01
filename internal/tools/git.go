@@ -15,8 +15,7 @@ func CloneOrUpdateRepo(repoPath, repoURL string) error {
 				return err
 			}
 			_, err = git.PlainClone(repoPath, &git.CloneOptions{
-				URL:      repoURL,
-				Progress: os.Stdout,
+				URL: repoURL,
 			})
 			return err
 		}
@@ -27,8 +26,7 @@ func CloneOrUpdateRepo(repoPath, repoURL string) error {
 				return err
 			}
 			_, err = git.PlainClone(repoPath, &git.CloneOptions{
-				URL:      repoURL,
-				Progress: os.Stdout,
+				URL: repoURL,
 			})
 			return err
 		}
@@ -52,8 +50,7 @@ func CloneOrUpdateRepo(repoPath, repoURL string) error {
 	}
 
 	_, err = git.PlainClone(repoPath, &git.CloneOptions{
-		URL:      repoURL,
-		Progress: os.Stdout,
+		URL: repoURL,
 	})
 	return err
 }
