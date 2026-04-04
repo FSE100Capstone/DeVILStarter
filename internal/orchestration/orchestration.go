@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 )
@@ -105,16 +104,15 @@ func getOrchestrationState(ctx context.Context) (*orchestrationState, error) {
 func CreateInfrastructure(ctx context.Context) string {
 	tools.ProgressLogOrchestration(ctx, "Waiting for user to authenticate with AWS SSO...", 0)
 	creds := aws.GetAWSCredentials(ctx)
-	fmt.Println("\n--- AWS Credentials Retrieved ---")
-	fmt.Printf("Access Key ID: %s\n", *creds.AccessKeyId)
-	fmt.Printf("Secret Access Key: %s\n", *creds.SecretAccessKey)
-	fmt.Printf("Session Token: %s\n", *creds.SessionToken)
-	fmt.Printf("Expiration: %v\n", time.UnixMilli(creds.Expiration))
+	tools.LogOrchestration(ctx, "AWS SSO authentication successful! Retrieved temporary AWS credentials.")
 
+	tools.LogOrchestration(ctx, "Retrieving orchestration state...")
 	state, err := getOrchestrationState(ctx)
 	if err != nil {
+		tools.LogOrchestration(ctx, "Failed to retrieve orchestration state: "+err.Error())
 		log.Fatal(err)
 	}
+	tools.LogOrchestration(ctx, "Retrieved orchestration state.")
 
 	// 1. Create a map of the required AWS environment variables
 	// We use the temporary STS credentials retrieved from the SSO flow.

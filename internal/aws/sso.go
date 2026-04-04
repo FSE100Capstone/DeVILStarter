@@ -4,7 +4,6 @@ import (
 	"DeVILStarter/internal/tools"
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -83,12 +82,14 @@ func GetAWSCredentials(ctx context.Context) *ssotypes.RoleCredentials {
 		}
 
 		// If it's a different error (e.g., timeout, denied), fail out.
+		tools.LogOrchestration(ctx, "Error during token polling: "+err.Error())
 		log.Fatalf("\nFailed during token polling: %v", err)
 	}
 
-	fmt.Println("Browser authentication successful!")
+	tools.LogOrchestration(ctx, "Browser authentication successful!")
 
 	// 6. Exchange the resulting SSO Access Token for actual AWS Credentials
+	tools.LogOrchestration(ctx, "Exchanging SSO access token for AWS credentials...")
 	ssoClient := sso.NewFromConfig(cfg)
 	credsRes, err := ssoClient.GetRoleCredentials(ctx, &sso.GetRoleCredentialsInput{
 		AccessToken: tokenRes.AccessToken,
@@ -97,7 +98,10 @@ func GetAWSCredentials(ctx context.Context) *ssotypes.RoleCredentials {
 	})
 	if err != nil {
 		log.Fatalf("Failed to get role credentials: %v", err)
+		tools.LogOrchestration(ctx, "Failed to get role credentials: "+err.Error())
 	}
+
+	tools.LogOrchestration(ctx, "Successfully obtained AWS credentials from SSO!")
 
 	return credsRes.RoleCredentials
 }
