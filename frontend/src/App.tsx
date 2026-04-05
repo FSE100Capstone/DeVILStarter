@@ -2,8 +2,9 @@ import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import {CreateInfrastructure, DestroyInfrastructure, IsInfrastructureDeployed} from "../wailsjs/go/main/App";
 import {EventsOn} from "../wailsjs/runtime/runtime";
-import {Box, LinearProgress, Paper, Stack, Switch, Typography} from "@mui/material";
+import {Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Paper, Stack, Switch, Tooltip, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
+import {Visibility, VisibilityOff} from "@mui/icons-material";
 
 const OrchestrationSwitch = styled(Switch)(() => ({
     width: 128 * 3,
@@ -81,19 +82,49 @@ function App() {
     const [isInitializing, setIsInitializing] = useState(true);
     const [progressValue, setProgressValue] = useState(0);
     const [displayProgress, setDisplayProgress] = useState(0);
+    const [showLogs, setShowLogs] = useState(false);
+    const [ssoDeviceCode, setSsoDeviceCode] = useState<string | null>(null);
+    const [pendingCreate, setPendingCreate] = useState(false);
+    const [pendingDestroy, setPendingDestroy] = useState(false);
     const displayProgressRef = useRef(0);
     const logPanelRef = useRef<HTMLDivElement | null>(null);
+    const isEnabledRef = useRef(isEnabled);
+    const isBusyRef = useRef(isBusy);
+    const pendingCreateRef = useRef(pendingCreate);
+    const pendingDestroyRef = useRef(pendingDestroy);
 
     useEffect(() => {
         displayProgressRef.current = displayProgress;
     }, [displayProgress]);
 
     useEffect(() => {
-        const panel = logPanelRef.current;
-        if (panel) {
-            panel.scrollTop = panel.scrollHeight;
+        isEnabledRef.current = isEnabled;
+    }, [isEnabled]);
+
+    useEffect(() => {
+        isBusyRef.current = isBusy;
+    }, [isBusy]);
+
+    useEffect(() => {
+        pendingCreateRef.current = pendingCreate;
+    }, [pendingCreate]);
+
+    useEffect(() => {
+        pendingDestroyRef.current = pendingDestroy;
+    }, [pendingDestroy]);
+
+    useEffect(() => {
+        if (!showLogs) {
+            return;
         }
-    }, [logLines]);
+        const frame = requestAnimationFrame(() => {
+            const panel = logPanelRef.current;
+            if (panel) {
+                panel.scrollTop = panel.scrollHeight;
+            }
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [logLines, showLogs]);
 
     useEffect(() => {
         let animationFrame = 0;
@@ -125,11 +156,31 @@ function App() {
     }, [progressValue]);
 
     useEffect(() => {
-        const cancel = EventsOn("orchestrationLog", (message: string, progress?: number) => {
+        const cancelLog = EventsOn("orchestrationLog", (message: string, progress?: number) => {
             setLogLines((prev) => [...prev, message]);
             if (typeof progress === "number") {
                 setProgressValue(Math.max(0, Math.min(100, progress)));
             }
+
+            if (
+                pendingCreateRef.current &&
+                (message.includes("Browser authentication successful") ||
+                    message.includes("Successfully obtained AWS credentials from SSO"))
+            ) {
+                setResultText("Creating infrastructure, please wait...");
+            }
+
+            if (
+                pendingDestroyRef.current &&
+                (message.includes("Browser authentication successful") ||
+                    message.includes("Successfully obtained AWS credentials from SSO"))
+            ) {
+                setResultText("Destroying infrastructure, please wait...");
+            }
+        });
+
+        const cancelSso = EventsOn("ssoDeviceCode", (code: string) => {
+            setSsoDeviceCode(code);
         });
 
         const initialize = async () => {
@@ -150,7 +201,10 @@ function App() {
 
         void initialize();
 
-        return () => cancel();
+        return () => {
+            cancelLog();
+            cancelSso();
+        };
     }, []);
 
     async function toggleInfrastructure(nextEnabled: boolean) {
@@ -165,11 +219,13 @@ function App() {
 
         try {
             if (nextEnabled) {
-                setResultText("Creating infrastructure, please wait...");
+                setPendingCreate(true);
+                setResultText("Waiting for AWS SSO login...");
                 const result = await CreateInfrastructure();
                 setResultText(`Infrastructure created! Deployment URL: ${result}`);
             } else {
-                setResultText("Destroying infrastructure, please wait...");
+                setPendingDestroy(true);
+                setResultText("Waiting for AWS SSO login...");
                 await DestroyInfrastructure();
                 setResultText("Infrastructure destroyed!");
             }
@@ -177,6 +233,8 @@ function App() {
             setIsEnabled(previous);
             setResultText("Operation failed. Check logs for details.");
         } finally {
+            setPendingCreate(false);
+            setPendingDestroy(false);
             setIsBusy(false);
         }
     }
@@ -217,11 +275,108 @@ function App() {
                             </Box>
                         </Box>
                     )}
-                    <div id="orchestration-log" className="log-panel" ref={logPanelRef}>
-                        {logLines.length === 0 ? "Orchestration logs will appear here." : logLines.join("\n")}
-                    </div>
+                    <Box sx={{width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between"}}>
+                        <div className="connection-indicator">
+                            <span
+                                className={`connection-dot ${isInitializing || isBusy ? "connection-pending" : isEnabled ? "connection-on" : "connection-off"}`}
+                            />
+                            <span className="connection-text">
+                                {isInitializing
+                                    ? "Getting infra status"
+                                    : isBusy
+                                        ? isEnabled
+                                            ? "Deploying infrastructure"
+                                            : "Destroying infrastructure"
+                                        : isEnabled
+                                            ? "Infrastructure deployed"
+                                            : "Infrastructure destroyed"}
+                            </span>
+                        </div>
+                        <Tooltip title={showLogs ? "Hide logs" : "Show logs"}>
+                            <Button
+                                aria-label={showLogs ? "Hide logs" : "Show logs"}
+                                onClick={() => setShowLogs((prev) => !prev)}
+                                variant="outlined"
+                                startIcon={showLogs ? <VisibilityOff /> : <Visibility />}
+                                sx={{
+                                    borderRadius: 999,
+                                    textTransform: "none",
+                                    borderColor: "rgba(15, 44, 58, 0.2)",
+                                    color: "rgba(15, 44, 58, 0.85)",
+                                    px: 2,
+                                    py: 0.5,
+                                    "&:hover": {
+                                        borderColor: "rgba(15, 44, 58, 0.35)",
+                                        backgroundColor: "rgba(15, 44, 58, 0.04)",
+                                    },
+                                }}
+                            >
+                                {showLogs ? "Hide logs" : "Show logs"}
+                            </Button>
+                        </Tooltip>
+                    </Box>
                 </Stack>
             </Paper>
+            <Dialog
+                open={showLogs}
+                onClose={() => setShowLogs(false)}
+                fullWidth
+                maxWidth="md"
+            >
+                <DialogTitle>Orchestration Logs</DialogTitle>
+                <DialogContent
+                    dividers
+                    sx={{height: "60vh", p: 2, pb: 1, display: "flex", overflow: "hidden"}}
+                >
+                    <div
+                        id="orchestration-log"
+                        className="log-panel"
+                        ref={logPanelRef}
+                        style={{height: "100%", width: "100%"}}
+                    >
+                        {logLines.length === 0 ? "Orchestration logs will appear here." : logLines.join("\n")}
+                    </div>
+                </DialogContent>
+                <DialogActions sx={{pt: 1, px: 2}}>
+                    <Button onClick={() => setShowLogs(false)} variant="outlined">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            <Dialog
+                open={Boolean(ssoDeviceCode)}
+                onClose={() => setSsoDeviceCode(null)}
+                fullWidth
+                maxWidth="xs"
+            >
+                <DialogTitle>AWS SSO Verification Code</DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" sx={{color: "rgba(15, 44, 58, 0.7)", mb: 1}}>
+                        Use this code to complete AWS SSO authentication.
+                    </Typography>
+                    <Box
+                        sx={{
+                            width: "100%",
+                            textAlign: "center",
+                            fontSize: 24,
+                            fontWeight: 700,
+                            letterSpacing: "0.2em",
+                            color: "#0f2c3a",
+                            backgroundColor: "rgba(15, 44, 58, 0.06)",
+                            border: "1px solid rgba(15, 44, 58, 0.1)",
+                            borderRadius: 2,
+                            py: 2,
+                        }}
+                    >
+                        {ssoDeviceCode}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSsoDeviceCode(null)} variant="outlined">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     )
 }

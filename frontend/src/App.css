@@ -82,6 +82,50 @@
     color: rgba(15, 44, 58, 0.8);
 }
 
+.connection-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(15, 44, 58, 0.06);
+    color: rgba(15, 44, 58, 0.75);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    border: 1px solid rgba(15, 44, 58, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.connection-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #9aa8b1;
+    box-shadow: 0 0 0 4px rgba(154, 168, 177, 0.25);
+}
+
+.connection-dot.connection-on {
+    background: #2bb673;
+    box-shadow: 0 0 0 4px rgba(43, 182, 115, 0.25);
+}
+
+.connection-dot.connection-off {
+    background: #d36b5c;
+    box-shadow: 0 0 0 4px rgba(211, 107, 92, 0.25);
+}
+
+.connection-dot.connection-pending {
+    background: #f0b429;
+    box-shadow: 0 0 0 4px rgba(240, 180, 41, 0.25);
+}
+
+.connection-text {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+}
+
 .log-panel {
     width: 100%;
     height: 120px;
