@@ -54,6 +54,7 @@ func GetAWSCredentials(ctx context.Context) *ssotypes.RoleCredentials {
 	// 4. Prompt the user to log in via their browser
 	tools.LogOrchestration(ctx, "Opening browser for AWS SSO login...")
 	tools.LogOrchestration(ctx, "If prompted, the verification code is: "+*authRes.UserCode)
+	runtime.EventsEmit(ctx, "ssoDeviceCode", *authRes.UserCode)
 
 	runtime.BrowserOpenURL(ctx, *authRes.VerificationUriComplete)
 
