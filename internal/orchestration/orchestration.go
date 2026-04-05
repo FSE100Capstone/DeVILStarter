@@ -209,6 +209,7 @@ func IsInfrastructureDeployed(ctx context.Context) bool {
 
 	outputMeta, ok := outputs["session_api_base_url"]
 	if !ok {
+		tools.ProgressLogOrchestration(ctx, "Infrastructure check complete, session_api_base_url not found. Assuming infrastructure is not deployed.", 100)
 		return false
 	}
 
@@ -218,7 +219,7 @@ func IsInfrastructureDeployed(ctx context.Context) bool {
 		return false
 	}
 
-	tools.ProgressLogOrchestration(ctx, "Infrastructure check complete.", 100)
+	tools.ProgressLogOrchestration(ctx, "Infrastructure check complete, session_api_base_url found. Assuming infrastructure is deployed.", 100)
 
 	return outputURL != ""
 }
