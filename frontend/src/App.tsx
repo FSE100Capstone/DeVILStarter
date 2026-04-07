@@ -2,9 +2,9 @@ import {useEffect, useRef, useState} from 'react';
 import './App.css';
 import {CreateInfrastructure, DestroyInfrastructure, IsInfrastructureDeployed} from "../wailsjs/go/main/App";
 import {EventsOn} from "../wailsjs/runtime/runtime";
-import {Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Paper, Stack, Switch, Tooltip, Typography} from "@mui/material";
+import {Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, Paper, Stack, Switch, Tooltip, Typography} from "@mui/material";
 import {styled} from "@mui/material/styles";
-import {Visibility, VisibilityOff} from "@mui/icons-material";
+import {AccessTime, Visibility, VisibilityOff} from "@mui/icons-material";
 
 const OrchestrationSwitch = styled(Switch)(() => ({
     width: 128 * 3,
@@ -80,6 +80,7 @@ function App() {
     const [isEnabled, setIsEnabled] = useState(false);
     const [isBusy, setIsBusy] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [progressValue, setProgressValue] = useState(0);
     const [displayProgress, setDisplayProgress] = useState(0);
     const [showLogs, setShowLogs] = useState(false);
@@ -104,6 +105,22 @@ function App() {
     useEffect(() => {
         isBusyRef.current = isBusy;
     }, [isBusy]);
+
+    useEffect(() => {
+        const isTiming = isBusy || isInitializing;
+        if (!isTiming) {
+            setElapsedSeconds(0);
+            return;
+        }
+
+        const startedAt = Date.now();
+        const interval = window.setInterval(() => {
+            const nextSeconds = Math.floor((Date.now() - startedAt) / 1000);
+            setElapsedSeconds(nextSeconds);
+        }, 1000);
+
+        return () => window.clearInterval(interval);
+    }, [isBusy, isInitializing]);
 
     useEffect(() => {
         pendingCreateRef.current = pendingCreate;
@@ -167,7 +184,7 @@ function App() {
                 (message.includes("Browser authentication successful") ||
                     message.includes("Successfully obtained AWS credentials from SSO"))
             ) {
-                setResultText("Creating infrastructure, please wait...");
+                setResultText("Creating infrastructure, please wait. This may take up to 5 minutes. Do not close any terminal windows that may have opened.");
             }
 
             if (
@@ -175,7 +192,7 @@ function App() {
                 (message.includes("Browser authentication successful") ||
                     message.includes("Successfully obtained AWS credentials from SSO"))
             ) {
-                setResultText("Destroying infrastructure, please wait...");
+                setResultText("Destroying infrastructure, please wait. This may take up to 5 minutes. Do not close any terminal windows that may have opened.");
             }
         });
 
@@ -186,7 +203,7 @@ function App() {
         const initialize = async () => {
             setIsInitializing(true);
             setProgressValue(0);
-            setResultText("Setting up, this may take a minute...");
+            setResultText("Setting up, this may take a minute. You might see terminals opening and closing, this is normal.");
 
             try {
                 const deployed = await IsInfrastructureDeployed();
@@ -216,13 +233,14 @@ function App() {
         setIsEnabled(nextEnabled);
         setIsBusy(true);
         setProgressValue(0);
+        setElapsedSeconds(0);
 
         try {
             if (nextEnabled) {
                 setPendingCreate(true);
                 setResultText("Waiting for AWS SSO login...");
                 const result = await CreateInfrastructure();
-                setResultText(`Infrastructure created! Deployment URL: ${result}`);
+                setResultText("Infrastructure created!");
             } else {
                 setPendingDestroy(true);
                 setResultText("Waiting for AWS SSO login...");
@@ -241,8 +259,12 @@ function App() {
 
     return (
         <div id="App">
-            <Paper className="orchestration-card" elevation={0}>
-                <Stack spacing={2.5} alignItems="center">
+            <Paper
+                className="orchestration-card"
+                elevation={0}
+                sx={{display: "flex", flexDirection: "column", height: "93vh", width: "93vw"}}
+            >
+                <Stack spacing={2.5} alignItems="center" sx={{flexGrow: 1}}>
                     <Typography variant="h3" className="headline">
                         DeVILStarter
                     </Typography>
@@ -253,16 +275,43 @@ function App() {
                                 ? "Click to destroy DeVILSona's infrastructure!"
                                 : "Click to provision DeVILSona's infrastructure!"}
                     </Typography>
-                    <Box className="toggle-shell">
-                        <OrchestrationSwitch
-                            checked={isEnabled}
-                            disabled={isBusy || isInitializing}
-                            onChange={(event) => toggleInfrastructure(event.target.checked)}
-                        />
+                    <Box
+                        sx={{
+                            width: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            gap: 1,
+                            flexGrow: isBusy || isInitializing ? 0 : 1,
+                        }}
+                    >
+                        <Box className="toggle-shell" sx={{position: "relative"}}>
+                            <OrchestrationSwitch
+                                checked={isEnabled}
+                                disabled={isBusy || isInitializing}
+                                onChange={(event) => toggleInfrastructure(event.target.checked)}
+                                sx={{filter: isBusy || isInitializing ? "blur(1.5px)" : "none"}}
+                            />
+                            {(isBusy || isInitializing) && (
+                                <Box
+                                    sx={{
+                                        position: "absolute",
+                                        inset: 0,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        pointerEvents: "none",
+                                    }}
+                                >
+                                    <CircularProgress size={72} thickness={4} />
+                                </Box>
+                            )}
+                        </Box>
+                        <Typography className="status-text" variant="body2">
+                            {resultText}
+                        </Typography>
                     </Box>
-                    <Typography className="status-text" variant="body2">
-                        {resultText}
-                    </Typography>
                     {(isInitializing || isBusy) && (
                         <Box sx={{width: "100%"}}>
                             <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
@@ -273,49 +322,70 @@ function App() {
                                     {Math.round(displayProgress)}%
                                 </Typography>
                             </Box>
+                            <Box
+                                sx={{display: "flex", alignItems: "center", gap: 0.5, mt: 0.5}}
+                            >
+                                <Tooltip title="Time elapsed">
+                                    <AccessTime sx={{fontSize: 14, color: "rgba(15, 44, 58, 0.75)"}} />
+                                </Tooltip>
+                                <Typography
+                                    variant="caption"
+                                    sx={{color: "rgba(15, 44, 58, 0.75)"}}
+                                >
+                                    {Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}
+                                </Typography>
+                            </Box>
                         </Box>
                     )}
-                    <Box sx={{width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between"}}>
-                        <div className="connection-indicator">
-                            <span
-                                className={`connection-dot ${isInitializing || isBusy ? "connection-pending" : isEnabled ? "connection-on" : "connection-off"}`}
-                            />
-                            <span className="connection-text">
-                                {isInitializing
-                                    ? "Getting infra status"
-                                    : isBusy
-                                        ? isEnabled
-                                            ? "Deploying infrastructure"
-                                            : "Destroying infrastructure"
-                                        : isEnabled
-                                            ? "Infrastructure deployed"
-                                            : "Infrastructure destroyed"}
-                            </span>
-                        </div>
-                        <Tooltip title={showLogs ? "Hide logs" : "Show logs"}>
-                            <Button
-                                aria-label={showLogs ? "Hide logs" : "Show logs"}
-                                onClick={() => setShowLogs((prev) => !prev)}
-                                variant="outlined"
-                                startIcon={showLogs ? <VisibilityOff /> : <Visibility />}
-                                sx={{
-                                    borderRadius: 999,
-                                    textTransform: "none",
-                                    borderColor: "rgba(15, 44, 58, 0.2)",
-                                    color: "rgba(15, 44, 58, 0.85)",
-                                    px: 2,
-                                    py: 0.5,
-                                    "&:hover": {
-                                        borderColor: "rgba(15, 44, 58, 0.35)",
-                                        backgroundColor: "rgba(15, 44, 58, 0.04)",
-                                    },
-                                }}
-                            >
-                                {showLogs ? "Hide logs" : "Show logs"}
-                            </Button>
-                        </Tooltip>
-                    </Box>
                 </Stack>
+                <Box
+                    sx={{
+                        width: "100%",
+                        mt: "auto",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <div className="connection-indicator">
+                        <span
+                            className={`connection-dot ${isInitializing || isBusy ? "connection-pending" : isEnabled ? "connection-on" : "connection-off"}`}
+                        />
+                        <span className="connection-text">
+                            {isInitializing
+                                ? "Getting infra status"
+                                : isBusy
+                                    ? isEnabled
+                                        ? "Deploying infrastructure"
+                                        : "Destroying infrastructure"
+                                    : isEnabled
+                                        ? "Infrastructure deployed"
+                                        : "Infrastructure offline"}
+                        </span>
+                    </div>
+                    <Tooltip title={showLogs ? "Hide logs" : "Show logs"}>
+                        <Button
+                            aria-label={showLogs ? "Hide logs" : "Show logs"}
+                            onClick={() => setShowLogs((prev) => !prev)}
+                            variant="outlined"
+                            startIcon={showLogs ? <VisibilityOff /> : <Visibility />}
+                            sx={{
+                                borderRadius: 999,
+                                textTransform: "none",
+                                borderColor: "rgba(15, 44, 58, 0.2)",
+                                color: "rgba(15, 44, 58, 0.85)",
+                                px: 2,
+                                py: 0.5,
+                                "&:hover": {
+                                    borderColor: "rgba(15, 44, 58, 0.35)",
+                                    backgroundColor: "rgba(15, 44, 58, 0.04)",
+                                },
+                            }}
+                        >
+                            {showLogs ? "Hide logs" : "Show logs"}
+                        </Button>
+                    </Tooltip>
+                </Box>
             </Paper>
             <Dialog
                 open={showLogs}
